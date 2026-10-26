@@ -47,6 +47,28 @@ palette.CLASSES = {
     { key = "MAGE", label = "Mage" }, { key = "WARLOCK", label = "Warlock" },
     { key = "DRUID", label = "Druid" },
 }
+-- A client's own classes (retail's Retail/Core/Palette.lua), each after the
+-- one it names, so the style editor lists them in the game's order.
+for _, extra in ipairs(ns.contributions("classes")) do
+    for _, class in ipairs(extra) do
+        local at
+        for index, other in ipairs(palette.CLASSES) do
+            if other.key == class.after then at = index end
+        end
+        assert(at, "no class " .. tostring(class.after) .. " to put " .. tostring(class.key) .. " after")
+        table.insert(palette.CLASSES, at + 1, { key = class.key, label = class.label })
+    end
+end
+
+-- subClass is the game's Enum.ItemArmorSubclass, the same in every language.
+palette.ARMOR = {
+    { key = "Cloth", label = "Cloth", subClass = 1, color = { .90, .70, .78 } },
+    { key = "Leather", label = "Leather", subClass = 2, color = { .78, .58, .35 } },
+    { key = "Mail", label = "Mail armor", subClass = 3, color = { .37, .75, .68 } },
+    { key = "Plate", label = "Plate", subClass = 4, color = { .68, .73, .80 } },
+}
+local ARMOR = {}
+for _, armor in ipairs(palette.ARMOR) do ARMOR[armor.key] = armor end
 
 local function customColor(key)
     local color = ns.option and ns.option(key)
@@ -62,6 +84,11 @@ end
 function palette.school(name)
     local default = name and palette.schools[name]
     if default then return customColor("schoolColor" .. name) or default end
+end
+
+function palette.armorColor(key)
+    local armor = key and ARMOR[key]
+    if armor then return customColor("armorColor" .. key) or armor.color end
 end
 
 -- A school's name on this client, as a badge shows it: the game's for each of
