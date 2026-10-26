@@ -1,7 +1,7 @@
 -- Retail's parts in the style editor's samples: the weapon's source, upgrade
 -- level, crafted quality, transmogrification, sockets, and secondary stats; a
 -- spell with charges; and the player's specialization. UI/Samples.lua adds
--- them to its own on retail.
+-- them to its own (ns.contribute "samples").
 local _, ns = ...
 local L, fill = ns.L, ns.util.fill
 local samples = {}
@@ -20,10 +20,12 @@ function samples.extend(types, helpers)
 
     local weapon = find(items.samples, "label", "Weapon").fields
     -- Retail's source, upgrade level, and transmogrification.
-    weapon.source = ITEM_HEROIC
-    weapon.upgrade = fill(ITEM_UPGRADE_DROPDOWN_LEVEL_FORMAT_STRING, L["Myth"], 2, 6)
-    weapon.transmog = itemName(7717, "Ravager")
-    weapon.craftingQuality = fill(PROFESSIONS_CRAFTING_QUALITY, "|A:Professions-ChatIcon-Quality-Tier5:17:17|a")
+    weapon.retail = ns.Retail.Item.newFields({
+        source = ITEM_HEROIC,
+        upgrade = fill(ITEM_UPGRADE_DROPDOWN_LEVEL_FORMAT_STRING, L["Myth"], 2, 6),
+        transmog = itemName(7717, "Ravager"),
+        craftingQuality = fill(PROFESSIONS_CRAFTING_QUALITY, "|A:Professions-ChatIcon-Quality-Tier5:17:17|a"),
+    })
     -- Retail's sockets: a gem, an empty socket, and the bonus once both are filled.
     weapon.sockets = {
         { left = ns.Stats.styleStat(statLine("HASTE", 70), true, false), right = "",
@@ -54,3 +56,5 @@ function samples.extend(types, helpers)
     -- Retail names a player's specialization too: Arms, the warrior's first.
     find(units.samples, "label", "Player").fields.spec = (ns.Game.classSpecs(1) or {})[1]
 end
+
+ns.contribute("samples", samples.extend)
