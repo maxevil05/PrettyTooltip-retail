@@ -68,6 +68,33 @@ local function appendedRows(tooltip, lineIndices)
     end
     return rows
 end
+
+-- An empty line, as other addons add between their sections.
+local function isBlank(row)
+    return util.trim(util.plainText(row.left or "")) == "" and util.trim(util.plainText(row.right or "")) == ""
+end
+
+-- Adds other addons' rows to extras, one at a time: adder(row). A blank row
+-- separates an addon's sections, so it is kept as a gap, but only between two
+-- rows, and never two together.
+local function extrasAdder(extras)
+    local gap = false
+    return function(row)
+        if isBlank(row) then
+            gap = #extras > 0
+            return
+        end
+        if gap and not extras[#extras].blank then extras[#extras + 1] = { left = "", right = "", blank = true } end
+        gap = false
+        extras[#extras + 1] = row
+    end
+end
+
+local function addExtras(extras, rows)
+    local adder = extrasAdder(extras)
+    for _, row in ipairs(rows) do adder(row) end
+end
+
 -- The spell or item a tooltip shows in full, as a #showtooltip macro's or a
 -- pet ability's: a nested block naming it, then its own lines. Data for that
 -- type's reader, or nil.
@@ -91,6 +118,11 @@ local function nested(data)
 end
 
 tooltipData.add = add
+
+-- The line's own color when the game marks it as one the character will not
+-- get, as { r, g, b }; nil otherwise. Forever marks none; a client that does
+-- replaces this (retail's Retail/Game/TooltipDataExtension.lua).
+function tooltipData.inactiveColor(_color) end
 -- An item line's shortened wordings (Data/Stats.lua's itemWording), from the
 -- game's own data, which stays as it is. Nil for a line that reads the same,
 -- has a right side, or is hidden.
@@ -112,8 +144,9 @@ local function itemWording(line)
         wordings, wordingCount = {}, 0
         wordingVersion, wordingColors, wordingMarkers = version, colors, markers
     end
-    -- A line retail greys or reds keeps the game's color, without stat colors in it.
-    local inactive = ns.IsRetail() and ns.Retail.TooltipData.inactiveColor(line.leftColor) ~= nil
+    -- A line the game marks inactive (greyed or reddened, on retail) keeps the
+    -- game's color, without stat colors in it.
+    local inactive = tooltipData.inactiveColor(line.leftColor) ~= nil
     local key = ((proc and 1 or 0) + (inactive and 2 or 0)) .. text
     local cached = wordings[key]
     if cached ~= nil then return cached or nil end
@@ -129,3 +162,6 @@ tooltipData.isRed = isRed
 tooltipData.requirementMet = requirementMet
 tooltipData.appendedRows = appendedRows
 tooltipData.nested = nested
+tooltipData.isBlank = isBlank
+tooltipData.extrasAdder = extrasAdder
+tooltipData.addExtras = addExtras
