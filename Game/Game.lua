@@ -43,15 +43,16 @@ function game.itemInfo(item)
         price = readable(price) }
 end
 
--- The item's id, type and subtype names, equip slot, and class ID, from data
--- the client always has; nil when any is hidden.
+-- The item's id, type and subtype names, equip slot, and class and subclass
+-- IDs, from data the client always has; nil when any is hidden.
 function game.itemType(item)
     if isSecret(item) then return end
     if not (item and C_Item and C_Item.GetItemInfoInstant) then return end
-    local ok, id, className, subClassName, equipLoc, _, classID = pcall(C_Item.GetItemInfoInstant, item)
+    local ok, id, className, subClassName, equipLoc, _, classID, subClassID = pcall(C_Item.GetItemInfoInstant, item)
     if not ok or isSecret(id) or isSecret(className) or isSecret(subClassName) or isSecret(equipLoc)
-        or isSecret(classID) then return end
-    return { id = id, className = className, subClassName = subClassName, equipLoc = equipLoc, classID = classID }
+        or isSecret(classID) or isSecret(subClassID) then return end
+    return { id = id, className = className, subClassName = subClassName, equipLoc = equipLoc, classID = classID,
+        subClassID = subClassID }
 end
 
 -- Asks the client to load an item it has not seen, for a later hover.
@@ -301,16 +302,14 @@ function game.spellHealing()
     return number((call(GetSpellBonusHealing)))
 end
 
--- The mana a spell costs the player, on retail, whose tooltips give a share
--- of base mana; Forever's give the mana itself.
-function game.spellManaCost(spellID)
-    if ns.IsRetail() then return ns.Retail.Game.spellManaCost(spellID) end
-end
+-- The mana a spell costs the player: none here, as Forever's tooltips give the
+-- mana itself. A client whose tooltips give a share of base mana replaces it
+-- (retail's Retail/Game/GameExtension.lua).
+function game.spellManaCost(_spellID) end
 
 -- The seconds an instant cast holds the player's other spells: Forever's is
--- 1.5 sec, and retail's shrinks with haste.
+-- 1.5 sec. Retail's shrinks with haste, and it replaces this.
 function game.globalCooldown()
-    if ns.IsRetail() then return ns.Retail.Game.globalCooldown() end
     return 1.5
 end
 
@@ -362,10 +361,9 @@ function game.unitIsPVP(unit) return call(UnitIsPVP, unit) end
 function game.unitIsDead(unit) return call(UnitIsDeadOrGhost, unit) end
 function game.unitReaction(unit, other) return call(UnitReaction, unit, other) end
 function game.unitIsTapDenied(unit) return call(UnitIsTapDenied, unit) end
--- The names of a class's specializations, by class ID, on retail; Forever has none.
-function game.classSpecs(classID)
-    if ns.IsRetail() then return ns.Retail.Game.classSpecs(classID) end
-end
+-- The names of a class's specializations, by class ID: Forever has none.
+-- Retail's client does, and it replaces this.
+function game.classSpecs(_classID) end
 
 -- A class's color, by its file name, as { r, g, b }.
 -- The units a nearby player may be: the group, target, focus, mouseover, and
