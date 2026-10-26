@@ -31,3 +31,15 @@ L["Myth"] = "神話"
 L["Recharge"] = "恢復時間"
 L["Under the strip, on a spell with charges: Max 2 Charges."] = "在資訊列下方，用於有使用次數的法術：最多可累積2次使用次數。"
 L["Blasts the enemy for 950 Fire damage."] = "對敵人造成950點火焰傷害。"
+-- Retail's classes, as the game names them, for the style editor's class colors.
+L["Death Knight"] = "死亡騎士"
+L["Monk"] = "武僧"
+L["Demon Hunter"] = "惡魔獵人"
+L["Evoker"] = "喚能師"
+
+-- Retail Mythic+ rating integration.
+L['Mythic+ Rating Modifier'] = '傳奇鑰石評分快捷鍵'
+L['Hold Ctrl to show Mythic+ rating and dungeon scores on player tooltips.'] = '按住 Ctrl 顯示傳奇鑰石評分及副本成績。'
+L['Hold Alt to show Mythic+ rating and dungeon scores on player tooltips.'] = '按住 Alt 顯示傳奇鑰石評分及副本成績。'
+L['Show Mythic+ rating and dungeon scores without holding a modifier key.'] = '無需按鍵，始終顯示傳奇鑰石評分及副本成績。'
+L['Mythic+ Rating'] = '傳奇鑰石評分'
