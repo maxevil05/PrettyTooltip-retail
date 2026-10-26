@@ -290,6 +290,9 @@ L["The small diamond before each stat; enchants use a green one."] =
 L["Stat colors"] = "Couleurs des caractéristiques"
 L["Each kind of stat in its color below, and the school colors. Off, every stat is parchment."] =
     "Chaque type de caractéristique dans sa couleur ci-dessous, et les couleurs des écoles. Désactivé : toutes les caractéristiques sont couleur parchemin."
+L["Armor colors"] = "Couleurs d'armure"
+L["Cloth, leather, mail, and plate under the item's name, each in its color below. A type you cannot wear stays red. Off, they take the quality color."] =
+    "Tissu, cuir, mailles et plaques sous le nom de l'objet, chacun dans sa couleur ci-dessous. Un type que vous ne pouvez pas porter reste rouge. Désactivé : ils prennent la couleur de qualité."
 L["Abbreviated Equip Effects"] = "Effets Équipé abrégés"
 L["Where the game's own item tooltip shows, in the Blizzard layout or with items not restyled, its Equip effects are shortened, as +1% Critical Strike Chance, and the game's colors kept, but for spell power and chance on hit effects in their stat colors. Hold the default tooltip modifier for the full wording."] =
     "Là où l'infobulle d'objet du jeu s'affiche, dans la mise en page Blizzard ou pour les objets non restylés, ses effets Équipé sont raccourcis, comme +1% Chances de coup critique, et les couleurs du jeu gardées, sauf la puissance des sorts et les effets Chances quand vous touchez, dans leurs couleurs de caractéristique. Maintenez la touche pour l'infobulle du jeu pour le libellé complet."
@@ -302,9 +305,10 @@ L["The vendor price in the footer; for a stack, the price of one and of the whol
 L["Swap Damage Stats"] = "Inverser les dégâts"
 L["A weapon's damage on the large line, with its speed and damage per second on the small one under it."] =
     "Les dégâts d'une arme sur la grande ligne, sa vitesse et ses dégâts par seconde sur la petite ligne en dessous."
-L["Spell power"] = "Puissance des sorts"
+L["Spell power (Experimental)"] = "Puissance des sorts (expérimental)"
 L["Under the description, each amount's spell power coefficient and its split into base and spell power. No game API has coefficients: they come from Forever's client data, and ones marked ~ are estimates."] =
     "Sous la description, le coefficient de puissance des sorts de chaque montant et sa répartition entre valeur de base et puissance des sorts. Aucune API du jeu ne donne les coefficients : ils viennent des données du client Forever, ceux marqués ~ sont des estimations."
+L["Experimental: not all values are correct yet."] = "Expérimental : toutes les valeurs ne sont pas encore correctes."
 L["Rates"] = "Débits"
 L["Under the spell power breakdown, the average a cast deals or heals per second and per mana. Per second, what lands at once counts over the cast time (instants as the 1.5 sec global cooldown) and what comes over time over its duration. Crits and talents do not count."] =
     "Sous la répartition de puissance des sorts, la moyenne de dégâts ou de soins d'un sort par seconde et par point de mana. Par seconde, ce qui arrive d'un coup compte sur le temps d'incantation (les sorts instantanés comme le temps de recharge global de 1,5 s) et ce qui arrive sur la durée compte sur cette durée. Les critiques et les talents ne comptent pas."
@@ -543,7 +547,9 @@ L["Select all"] = "Tout sélectionner"
 L["Axe"] = "Hache"
 L["Plate"] = "Plaques"
 L["Polearm"] = "Arme d'hast"
-L["Mail"] = "Mailles"
+L["Mail"] = "Courrier"
+L["Cloth"] = "Tissu"
+L["Leather"] = "Cuir"
 L["Consumable"] = "Consommable"
 L["Plans"] = "Plans"
 L["Shields"] = "Boucliers"
@@ -604,3 +610,34 @@ L["Ended by"] = "Terminée auprès de"
 L["Started by"] = "Commencée auprès de"
 L["Found in"] = "Se trouve à"
 L["Rares"] = "Rares"
+
+-- Retail editor and tooltip localization additions.
+L["Mail armor"] = "Mailles"
+L["Spell power"] = "Puissance des sorts"
+L["Mythic+ Rating Modifier"] = "Touche de modification du score Mythique+"
+L["Hold Ctrl to show Mythic+ rating and dungeon scores on player tooltips."] = "Maintenez Ctrl pour afficher le score Mythique+ et les scores des donjons dans l’infobulle du personnage."
+L["Hold Alt to show Mythic+ rating and dungeon scores on player tooltips."] = "Maintenez Alt pour afficher le score Mythique+ et les scores des donjons dans l’infobulle du personnage."
+L["Show Mythic+ rating without holding a modifier key."] = "Toujours afficher le score Mythique+ sans touche de modification."
+L["Mythic+ Rating"] = "Cote Mythique+"
+L["Mount"] = "Monture"
+L["Collected"] = "Obtenue"
+L["Not collected"] = "Non obtenue"
+L["Examples:"] = "Exemples :"
+L["Attachments"] = "Pièces jointes"
+L["Mail title"] = "Titre du courrier"
+L["Attachments and prices"] = "Pièces jointes et prix"
+L["Mail contents"] = "Contenu du courrier"
+L["Total: 14 items"] = "Total : 14 objets"
+L["Cooked Crab Claw"] = "Pince de crabe cuite"
+L["Pyrite"] = "Pyrite"
+L["%d items"] = "%d objets"
+
+-- Additional translations retained from PrettyTooltip 1.3.6.
+L["Source"] = "Source"
+
+-- Locale-specific Mythic+ and raid tooltip labels / short names.
+L["Mythic+ Rating"] = "Cote mythique+"
+L["Raid Progress"] = "Progression de raid"
+L["Raid Short: Tidal Hollows"] = "TH"
+L["Raid Short: Venomous Abyss"] = "VA"
+L["Raid Short: Kishix Unbound"] = "KU"
