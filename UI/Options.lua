@@ -51,34 +51,64 @@ function ns.Options.register()
         if ns.openEditor then ns.openEditor() end
     end)
 
-    -- Two columns: the types of tooltip on the left, the other settings on the right.
-    local COLUMNS_TOP = -100
-    local leftColumn = { x = 16, y = COLUMNS_TOP }
-    local rightColumn = { x = 440, y = COLUMNS_TOP }
+    -- Two-tab layout. Each tab owns a scrollable canvas; the title and editor
+    -- shortcut stay outside the scroll area so they never get clipped.
+    local tabs = {}
+    local panels = {}
+    local activeTab = "general"
+    local function makePanel(id)
+        local scroll = CreateFrame("ScrollFrame", nil, page, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT", page, "TOPLEFT", 16, -112)
+        scroll:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -30, 12)
+        local canvas = CreateFrame("Frame", nil, scroll)
+        canvas:SetSize(700, 700)
+        scroll:SetScrollChild(canvas)
+        scroll:EnableMouseWheel(true)
+        scroll:SetScript("OnMouseWheel", function(self, delta)
+            local bar = self.ScrollBar or _G[self:GetName() and self:GetName() .. "ScrollBar" or ""]
+            if bar then bar:SetValue(bar:GetValue() - delta * 42) end
+        end)
+        panels[id] = {scroll=scroll, canvas=canvas}
+        scroll:Hide()
+        return canvas
+    end
+    local general = makePanel("general")
+    local modifiers = makePanel("modifiers")
+    local function selectTab(id)
+        activeTab = id
+        for name, panel in pairs(panels) do
+            panel.scroll:SetShown(name == id)
+            if tabs[name] then
+                tabs[name]:SetEnabled(name ~= id)
+            end
+        end
+        refreshControls()
+    end
+    local function addTab(id, text, x)
+        local button = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+        button:SetSize(110, 24)
+        button:SetPoint("TOPLEFT", page, "TOPLEFT", x, -80)
+        button:SetText(L[text])
+        button:SetScript("OnClick", function() selectTab(id) end)
+        tabs[id] = button
+    end
+    addTab("general", "General", 16)
+    addTab("modifiers", "Modifier Keys", 132)
 
-    local function section(column, text)
-        local header = page:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        header:SetPoint("TOPLEFT", column.x, column.y)
+    local function section(parent, x, y, text)
+        local header = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+        header:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
         header:SetText(L[text])
-        column.y = column.y - 24
+        return y - 25
     end
-
-    section(leftColumn, "Restyled Tooltips")
-    for index, heading in ipairs({ "Restyle", "Follow cursor" }) do
-        local label = page:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        label:SetPoint("TOPLEFT", leftColumn.x + 244 + (index - 1) * 90, leftColumn.y)
-        label:SetText(L[heading])
-    end
-    leftColumn.y = leftColumn.y - 16
-
-    -- The Blizzard layout restyles no kind, so a kind's own box has no say then.
-    local function typeBox(x, key, title, text, followsLayout)
-        local button = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+    local function checkbox(parent, x, y, key, title, description, followsLayout)
+        local button = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
         button:SetSize(24, 24)
-        button:SetPoint("TOPLEFT", x, leftColumn.y + 4)
+        button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
         if key then
-            button:SetScript("OnClick", function(self) setOption(key, self:GetChecked() and true or false) end)
-            if button.SetMotionScriptsWhileDisabled then button:SetMotionScriptsWhileDisabled(true) end
+            button:SetScript("OnClick", function(self)
+                setOption(key, self:GetChecked() and true or false)
+            end)
             button.refresh = function()
                 button:SetChecked(ns.option(key))
                 if followsLayout then button:SetEnabled(ns.option("layout") ~= "blizzard") end
@@ -86,114 +116,90 @@ function ns.Options.register()
             controls[#controls + 1] = button
         else
             button:Disable()
-            -- A disabled button takes no hover unless told to; its tooltip still shows.
-            if button.SetMotionScriptsWhileDisabled then button:SetMotionScriptsWhileDisabled(true) end
         end
-        explain(button, title, text)
+        if button.SetMotionScriptsWhileDisabled then button:SetMotionScriptsWhileDisabled(true) end
+        explain(button, title, description)
+        return button
     end
-
-    for _, tooltipType in ipairs(ns.TOOLTIP_TYPES) do
-        local label = page:CreateFontString(nil, "ARTWORK",
-            tooltipType.restyle and "GameFontHighlight" or "GameFontDisable")
-        label:SetPoint("TOPLEFT", leftColumn.x + 8, leftColumn.y - 1)
-        label:SetText(L[tooltipType.label])
-        typeBox(leftColumn.x + 254, tooltipType.restyle, L["Restyle " .. tooltipType.label:lower()], tooltipType.restyle
-            and "Draws the PrettyTooltip panel. Off, this kind keeps the game's own tooltip, with the details "
-                .. "modifier's rows added to it."
-            or "Not restyled yet; this kind keeps the game's own tooltip.", true)
-        typeBox(leftColumn.x + 354, tooltipType.cursor, "Follow cursor", "Shows this kind's tooltip at the cursor "
-            .. "when the game would put it in its default corner; bags and other panels keep theirs. Off, "
-            .. "its position is left to the game and other addons.")
-        leftColumn.y = leftColumn.y - 22
-    end
-
-    -- A choice of values for one setting, each { value, label, note }, as radio
-    -- buttons down the column.
-    local function radios(column, choices, current, pick)
+    local function radios(parent, x, y, choices, current, pick, spacing)
+        spacing = spacing or 23
         for _, choice in ipairs(choices) do
             local value, label, note = choice[1], choice[2], choice[3]
-            local button = CreateFrame("CheckButton", nil, page, "UIRadioButtonTemplate")
-            button:SetPoint("TOPLEFT", column.x + 8, column.y)
+            local button = CreateFrame("CheckButton", nil, parent, "UIRadioButtonTemplate")
+            button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
             local caption = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
             caption:SetPoint("LEFT", button, "RIGHT", 6, 0)
             caption:SetText(L[label])
             button:SetHitRectInsets(0, -(caption:GetStringWidth() + 8), 0, 0)
-            button:SetScript("OnClick", function()
-                pick(value)
-                refreshControls()
-            end)
+            button:SetScript("OnClick", function() pick(value); refreshControls() end)
             button.refresh = function() button:SetChecked(current() == value) end
             controls[#controls + 1] = button
             explain(button, label, note)
-            column.y = column.y - 22
+            y = y - spacing
         end
-        column.y = column.y - 12
+        return y
+    end
+    local function optionRadios(parent, x, y, key, choices)
+        return radios(parent, x, y, choices, function() return ns.option(key) end,
+            function(value) setOption(key, value) end)
     end
 
-    local function optionRadios(column, key, choices)
-        radios(column, choices, function() return ns.option(key) end, function(value) setOption(key, value) end)
+    -- GENERAL: full original tooltip-type table, including its last rows.
+    local y = section(general, 8, -8, "Restyled Tooltips")
+    local restyleLabel = general:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    restyleLabel:SetPoint("TOPLEFT", general, "TOPLEFT", 258, y)
+    restyleLabel:SetText(L["Restyle"])
+    local cursorLabel = general:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    cursorLabel:SetPoint("TOPLEFT", general, "TOPLEFT", 360, y)
+    cursorLabel:SetText(L["Follow cursor"])
+    y = y - 19
+    for _, tooltipType in ipairs(ns.TOOLTIP_TYPES) do
+        local label = general:CreateFontString(nil, "ARTWORK",
+            tooltipType.restyle and "GameFontHighlight" or "GameFontDisable")
+        label:SetPoint("TOPLEFT", general, "TOPLEFT", 16, y - 3)
+        label:SetText(L[tooltipType.label])
+        checkbox(general, 263, y + 3, tooltipType.restyle,
+            "Restyle " .. tooltipType.label:lower(), tooltipType.restyle
+                and "Draws the PrettyTooltip panel. Off, this kind keeps the game's own tooltip, with the details modifier's rows added to it."
+                or "Not restyled yet; this kind keeps the game's own tooltip.", true)
+        checkbox(general, 365, y + 3, tooltipType.cursor, "Follow cursor",
+            "Shows this kind's tooltip at the cursor when the game would put it in its default corner; bags and other panels keep theirs.")
+        y = y - 24
     end
-
-    section(rightColumn, "Layout Style")
-    optionRadios(rightColumn, "layout", {
-        { "pretty", "PrettyTooltip", "Draw the PrettyTooltip panel for each kind turned on under Restyled Tooltips." },
-        { "blizzard", "Blizzard", "Keep the game's own tooltips. Item Equip effects are shortened, and the details "
-            .. "modifier adds disenchant results, the spell power breakdown and rates, gathering contents, and IDs." },
-    })
-
-    section(rightColumn, "Default Tooltip Modifier")
-    optionRadios(rightColumn, "originalKey", {
-        { "CTRL", "Ctrl", "Hold Ctrl to see the game's own tooltip instead of the panel." },
-        { "ALT", "Alt", "Hold Alt to see the game's own tooltip instead of the panel." },
-        { "NONE", "Never", "Never show the game's own tooltip in place of the panel." },
-    })
-
-    section(rightColumn, "Tooltip Details Modifier")
-    optionRadios(rightColumn, "detailsKey", {
-        { "SHIFT", "Shift", "Hold Shift to see disenchant results, the spell power breakdown and rates, gathering "
-            .. "contents, and IDs. Each can still be turned off in the style editor." },
-        { "ALWAYS", "Always Show", "Always show disenchant results, the spell power breakdown and rates, gathering "
-            .. "contents, and IDs, as each one's setting in the style editor allows." },
-    })
-
-    section(rightColumn, "Follow cursor")
-    local combatBox = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
-    combatBox:SetSize(24, 24)
-    combatBox:SetPoint("TOPLEFT", rightColumn.x + 8, rightColumn.y + 4)
-    local combatLabel = combatBox:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    y = y - 18
+    local rightX = 460
+    local rightY = section(general, rightX, -8, "Layout Style")
+    rightY = optionRadios(general, rightX + 8, rightY, "layout", {
+        {"pretty", "PrettyTooltip", "Draw the PrettyTooltip panel for each kind turned on under Restyled Tooltips."},
+        {"blizzard", "Blizzard", "Keep the game's own tooltips."},
+    }) - 18
+    rightY = section(general, rightX, rightY, "Follow cursor")
+    local combatBox = checkbox(general, rightX + 8, rightY + 4, "cursorDisableInCombat",
+        "Disable in combat", "Use the default tooltip position during combat, then resume following the cursor afterward.")
+    local combatLabel = general:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     combatLabel:SetPoint("LEFT", combatBox, "RIGHT", 6, 0)
     combatLabel:SetText(L["Disable in combat"])
     combatBox:SetHitRectInsets(0, -(combatLabel:GetStringWidth() + 8), 0, 0)
-    combatBox:SetScript("OnClick", function(self)
-        setOption("cursorDisableInCombat", self:GetChecked() and true or false)
-    end)
-    combatBox.refresh = function() combatBox:SetChecked(ns.option("cursorDisableInCombat")) end
-    controls[#controls + 1] = combatBox
-    explain(combatBox, "Disable in combat",
-        "Use the default tooltip position during combat, then resume following the cursor afterward.")
-    rightColumn.y = rightColumn.y - 34
-
-    section(rightColumn, "Style Editor Appearance")
-    radios(rightColumn, {
-        { "native", "Blizzard", "Use the game's settings frame borders and controls." },
-        { "flat", "Flat", "Use the flat editor appearance." },
+    rightY = rightY - 48
+    rightY = section(general, rightX, rightY, "Style Editor Appearance")
+    rightY = radios(general, rightX + 8, rightY, {
+        {"native", "Blizzard", "Use the game's settings frame borders and controls."},
+        {"flat", "Flat", "Use the flat editor appearance."},
     }, ns.editorStyle, function(value)
         setOption("editorStyle", value)
         if ns.refreshEditorStyle then ns.refreshEditorStyle() end
-    end)
-
-    section(rightColumn, "Global scale")
-    local scaleSlider = CreateFrame("Slider", nil, page, "MinimalSliderTemplate")
+    end) - 18
+    rightY = section(general, rightX, rightY, "Global scale")
+    local scaleSlider = CreateFrame("Slider", nil, general, "MinimalSliderTemplate")
     scaleSlider:SetOrientation("HORIZONTAL")
-    scaleSlider:SetPoint("TOPLEFT", rightColumn.x + 12, rightColumn.y)
-    -- Leave room for the percentage inside the right column. The template
-    -- supplies the track and thumb; custom artwork here would overlap it.
-    scaleSlider:SetSize(160, 19)
+    scaleSlider:SetPoint("TOPLEFT", general, "TOPLEFT", rightX + 12, rightY)
+    scaleSlider:SetSize(125, 19)
     scaleSlider:SetMinMaxValues(50, 150)
     scaleSlider:SetValueStep(1)
     if scaleSlider.SetObeyStepOnDrag then scaleSlider:SetObeyStepOnDrag(true) end
     local scaleValue = scaleSlider:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    scaleValue:SetPoint("LEFT", scaleSlider, "RIGHT", 12, 0)
+    scaleValue:SetPoint("TOP", scaleSlider, "BOTTOM", 0, -5)
+    scaleValue:SetJustifyH("CENTER")
     scaleSlider:SetScript("OnValueChanged", function(self, percent)
         if self.updating then return end
         percent = math.floor(percent + .5)
@@ -208,8 +214,35 @@ function ns.Options.register()
         scaleSlider.updating = false
     end
     controls[#controls + 1] = scaleSlider
-    explain(scaleSlider, "Global scale", "Scales every PrettyTooltip panel, including text, icons, spacing, and bars. "
-        .. "100% is the default. Individual text settings are preserved.")
+    explain(scaleSlider, "Global scale", "Scales every PrettyTooltip panel, including text, icons, spacing, and bars.")
+    general:SetHeight(math.max(680, -y + 35, -rightY + 90))
+
+    -- MODIFIERS: four independent groups, two columns and two rows.
+    local function modifierGroup(x, y, heading, key, choices)
+        local top = section(modifiers, x, y, heading)
+        optionRadios(modifiers, x + 8, top, key, choices)
+    end
+    modifierGroup(8, -12, "Mythic+ Rating Modifier", "mythicScoreKey", {
+        {"CTRL", "Ctrl", "Hold Ctrl to show dungeon score details."},
+        {"ALT", "Alt", "Hold Alt to show dungeon score details."},
+        {"NONE", "Always Show", "Always show dungeon score details."},
+    })
+    modifierGroup(380, -12, "Raid Progress Modifier", "raidProgressKey", {
+        {"CTRL", "Ctrl", "Hold Ctrl to show raid progress."},
+        {"ALT", "Alt", "Hold Alt to show raid progress."},
+        {"NONE", "Always Show", "Always show raid progress."},
+    })
+    modifierGroup(8, -168, "Default Tooltip Modifier", "originalKey", {
+        {"CTRL", "Ctrl", "Hold Ctrl to see the game's own tooltip instead of the panel."},
+        {"ALT", "Alt", "Hold Alt to see the game's own tooltip instead of the panel."},
+        {"NONE", "Never", "Never show the game's own tooltip in place of the panel."},
+    })
+    modifierGroup(380, -168, "Tooltip Details Modifier", "detailsKey", {
+        {"SHIFT", "Shift", "Hold Shift to see additional tooltip details."},
+        {"ALWAYS", "Always Show", "Always show additional tooltip details."},
+    })
+    modifiers:SetHeight(400)
+    selectTab("general")
 
     page:SetScript("OnShow", refreshControls)
     -- Hooks the settings window calls on canvas pages: when it shows them, and
