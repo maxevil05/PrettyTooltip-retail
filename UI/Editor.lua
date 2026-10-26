@@ -152,7 +152,7 @@ titleContainer:SetPoint("TOPLEFT")
 titleContainer:SetPoint("TOPRIGHT")
 titleContainer:SetHeight(32)
 titleContainer:SetFrameLevel(editor:GetFrameLevel() + 2)
-local heading = text(titleContainer, "GameFontNormalLarge", "PrettyTooltip Style Editor")
+local heading = text(titleContainer, "GameFontNormalLarge", L["PrettyTooltip Style Editor"])
 heading:SetPoint("TOPLEFT", 16, -14)
 local subheading = text(editor, "GameFontDisableSmall",
     "Click any part of the sample to restyle it. Tooltips use the new look the next time they open.")
@@ -235,7 +235,7 @@ for index, tooltipType in ipairs(TYPE_ORDER) do
     tab:SetPoint("BOTTOMLEFT", host, "TOPLEFT", (index - 1) * 68, 34)
     typeTabs[tooltipType] = tab
 end
-local examplesLabel = text(editor, "GameFontNormalSmall", "Examples:")
+local examplesLabel = text(editor, "GameFontNormalSmall", L["Examples:"])
 examplesLabel:SetPoint("BOTTOMLEFT", host, "TOPLEFT", 0, 11)
 local sampleTabs = {}
 for index = 1, MAX_SAMPLES do
@@ -748,7 +748,7 @@ local function colorControl()
     return holder
 end
 
-local function checkbox(label, key, description, isAvailable)
+local function checkbox(label, key, description, isAvailable, warning)
     local button = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     button:SetSize(22, 22)
     if isAvailable then button:SetMotionScriptsWhileDisabled(true) end
@@ -759,6 +759,7 @@ local function checkbox(label, key, description, isAvailable)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L[label], 1, 1, 1)
         GameTooltip:AddLine(L[description], nil, nil, nil, true)
+        if warning then GameTooltip:AddLine(L[warning], 1, .82, 0, true) end
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -796,16 +797,17 @@ local function applyLookup(entry)
 end
 
 local lookupLabel = text(editor, "GameFontHighlightSmall")
-lookupLabel:SetPoint("BOTTOMLEFT", host, "TOPRIGHT", 18, 11)
+lookupLabel:SetPoint("BOTTOMLEFT", host, "TOPRIGHT", 0, 11)
+lookupLabel:SetWidth(64)
 local lookupBox = CreateFrame("EditBox", nil, editor)
-lookupBox:SetSize(CONTROLS_WIDTH - LABEL_WIDTH - 70, 22)
-lookupBox:SetPoint("BOTTOMLEFT", host, "TOPRIGHT", 18 + LABEL_WIDTH, 6)
+lookupBox:SetSize(CONTROLS_WIDTH - 112, 22)
+lookupBox:SetPoint("BOTTOMLEFT", host, "TOPRIGHT", 64, 6)
 skin:field(lookupBox, background(lookupBox, FIELD), outline(lookupBox, LINE))
 lookupBox:SetFontObject("GameFontHighlightSmall")
 lookupBox:SetTextInsets(8, 8, 0, 0)
 lookupBox:SetAutoFocus(false)
 lookupBox:SetMaxLetters(255)
-local lookupPlaceholder = text(lookupBox, "GameFontDisableSmall", "ID, or shift-click a link")
+local lookupPlaceholder = text(lookupBox, "GameFontDisableSmall", L["ID, or shift-click a link"])
 lookupPlaceholder:SetPoint("LEFT", 8, 0)
 lookupBox:SetScript("OnEnterPressed", function(self)
     self:ClearFocus()
@@ -823,7 +825,8 @@ local lookupClear = editorButton(editor, "Clear", 62, function()
     state.lookup = nil
     refresh()
 end)
-lookupClear:SetPoint("LEFT", lookupBox, "RIGHT", 8, 0)
+lookupClear:SetWidth(40)
+lookupClear:SetPoint("LEFT", lookupBox, "RIGHT", 6, 0)
 
 if ChatEdit_InsertLink then
     hooksecurefunc("ChatEdit_InsertLink", function(link)
@@ -907,8 +910,10 @@ end
 
 -- A label, the control beside it, and, once the setting is changed, the label
 -- in gold with a button to put it back.
+-- A control taller than one line (colorSwatches over two) gives the extra
+-- height in extraHeight.
 local function row(label, control, setting, shown, stacked)
-    local holder = entry(stacked and 54 or 30, shown)
+    local holder = entry((stacked and 54 or 30) + (control.extraHeight or 0), shown)
     local caption = text(holder, "GameFontHighlightSmall", label)
     caption:SetPoint("TOPLEFT", 0, -5)
     control:SetParent(holder)
@@ -939,13 +944,14 @@ local function row(label, control, setting, shown, stacked)
     }
 end
 
--- Checkboxes two to a line, each { label, key, description, shown }: those
--- shown close up, so a type's own come out without gaps.
+-- Checkboxes two to a line, each { label, key, description, shown, isAvailable,
+-- warning }: those shown close up, so a type's own come out without gaps. A
+-- warning is a gold line under the description.
 local function toggles(list, shown)
     local holder, item = entry(0, shown)
     local boxes = {}
     for index, toggle in ipairs(list) do
-        local box = checkbox(toggle[1], toggle[2], toggle[3], toggle[5])
+        local box = checkbox(toggle[1], toggle[2], toggle[3], toggle[5], toggle[6])
         box:SetParent(holder)
         boxes[index] = { box = box, shown = toggle[4] }
     end
@@ -974,8 +980,9 @@ local partPicker = dropdown(CONTROLS_WIDTH, function()
     local items = {}
     for _, element in ipairs(ns.ELEMENTS) do
         local tooltipType = element.tooltipType or "item"
-        if (tooltipType == state.tooltipType or tooltipType == "shared") and not (element.classic and ns.IsRetail())
-            and not (element.retail and not ns.IsRetail()) then
+        -- A part drawn from data only some clients load (Classic's disenchant and
+        -- loot tables) names it, and is offered where it is loaded.
+        if (tooltipType == state.tooltipType or tooltipType == "shared") and (not element.needs or ns[element.needs] ~= nil) then
             items[#items + 1] = { value = element.key, text = element.label }
         end
     end
@@ -1040,7 +1047,7 @@ controls[#controls + 1] = allCaps
 row("Letters", allCaps, partSetting("caps"))
 
 local resetHolder = entry(32)
-local resetPart = editorButton(resetHolder, "Reset this part", 120, function()
+local resetPart = editorButton(resetHolder, L["Reset this part"], 120, function()
     ns.resetElement(state.selected)
     refresh()
 end)
@@ -1052,16 +1059,24 @@ local function hexColor(hex)
     return { tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255 }
 end
 
--- note, if given, says why the colors shown may not be the ones chosen.
+-- note, if given, says why the colors shown may not be the ones chosen. More
+-- swatches than fit across, as retail's thirteen classes, share out over
+-- lines of about equal length.
+local SWATCH_SIZE, SWATCH_STEP = 22, 28
 local function colorSwatches(list, prefix, colorOf, note)
     local holder = CreateFrame("Frame", nil, content)
-    holder:SetSize(CONTROLS_WIDTH, 22)
+    local fit = math.max(1, math.floor((CONTROLS_WIDTH - SWATCH_SIZE) / SWATCH_STEP) + 1)
+    local lines = math.max(1, math.ceil(#list / fit))
+    local across = math.ceil(#list / lines)
+    holder:SetSize(CONTROLS_WIDTH, SWATCH_SIZE + (lines - 1) * SWATCH_STEP)
+    holder.extraHeight = (lines - 1) * SWATCH_STEP
     local chips = {}
     for index, choice in ipairs(list) do
         local key = prefix .. choice.key
         local swatch = CreateFrame("Button", nil, holder)
-        swatch:SetSize(22, 22)
-        swatch:SetPoint("LEFT", (index - 1) * 28, 0)
+        swatch:SetSize(SWATCH_SIZE, SWATCH_SIZE)
+        local place, line = (index - 1) % across, math.floor((index - 1) / across)
+        swatch:SetPoint("TOPLEFT", place * SWATCH_STEP, -line * SWATCH_STEP)
         outline(swatch, LINE)
         local chip = fill(swatch, "ARTWORK", { 1, 1, 1 })
         chip:SetPoint("TOPLEFT", 3, -3)
@@ -1115,7 +1130,7 @@ end
 -- Every tooltip ------------------------------------------------------------------
 
 section("All Tooltips")
-row("Global scale", slider(FIELD_WIDTH, function()
+row(L["Global scale"], slider(FIELD_WIDTH, function()
     return math.floor(ns.tooltipScale() * 100 + .5)
 end, function(percent)
     ns.setOption("tooltipScale", percent ~= 100 and percent / 100 or nil)
@@ -1225,13 +1240,14 @@ section(function() return DETAILS[state.tooltipType] end, function() return DETA
 local items, spells, units = forTypes("item"), forTypes("spell"), forTypes("unit")
 -- The spell power rows read spell descriptions, which not every language's reading covers yet.
 local function coefficients() return ns.Locale.features.coefficients == true end
--- Settings drawn from Classic-only data, which retail does not load.
-local function classicOnly(shown)
-    return function() return not ns.IsRetail() and shown() end
+-- Settings drawn from data only some clients load (Classic's tables, which
+-- retail does not), offered where it is loaded: needs names it in ns.
+local function withData(needs, shown)
+    return function() return ns[needs] ~= nil and shown() end
 end
--- Settings for what only retail's tooltips have.
-local function retailOnly(shown)
-    return function() return ns.IsRetail() and shown() end
+-- Settings for a style part a client adds (retail's gems), offered with it.
+local function withPart(key, shown)
+    return function() return ns.ELEMENT_BY_KEY[key] ~= nil and shown() end
 end
 toggles({
     { "Quest parchment", "questParchment", "DialogueUI's brown parchment for quest tooltips, Quest Items, "
@@ -1245,7 +1261,8 @@ toggles({
     { "Stat markers", "statMarkers", "The small diamond before each stat; enchants use a green one.", items },
     { "Stat colors", "statColors",
         "Each kind of stat in its color below, and the school colors. Off, every stat is parchment.", items },
-    { "Abbreviated Equip Effects", "liteWording", "Where the game's own item tooltip shows, in the Blizzard layout or with "
+    { "Armor colors", "armorColors", "Cloth, leather, mail, and plate under the item's name, each in its color "
+        .. "below. A type you cannot wear stays red. Off, they take the quality color.", items },    { "Abbreviated Equip Effects", "liteWording", "Where the game's own item tooltip shows, in the Blizzard layout or with "
         .. "items not restyled, its Equip effects are shortened, as +1% Critical Strike Chance, and the game's "
         .. "colors kept, but for spell power and chance on hit effects in their stat colors. Hold the default "
         .. "tooltip modifier for the full wording.", items },
@@ -1253,14 +1270,15 @@ toggles({
         .. "second on the small one under it.", items },
     { "Disenchant", "disenchant", "Green, blue, and purple armor and weapons list what they disenchant into, "
         .. "with each result's chance and the Enchanting it needs; with Auctionator, the expected value.",
-        classicOnly(items) },
+        withData("disenchantFor", items) },
     { "Socket hint", "socketHint", "The game's Shift Right Click to Socket line, under an item's sockets. Off, "
-        .. "the panel leaves it out.", retailOnly(items) },
+        .. "the panel leaves it out.", withPart("gems", items) },
     { "Sell price", "sellPrice", "The vendor price in the footer; for a stack, the price of one and of the "
         .. "whole stack.", items },
-    { "Spell power", "spellPower", "Under the description, each amount's spell power coefficient and its "
-        .. "split into base and spell power. No game API has coefficients: they come from Forever's client "
-        .. "data, and ones marked ~ are estimates.", classicOnly(spells), coefficients },
+    { "Spell power (Experimental)", "spellPower", "Under the description, each amount's spell power coefficient "
+        .. "and its split into base and spell power. No game API has coefficients: they come from Forever's client "
+        .. "data, and ones marked ~ are estimates.", withData("spellPowerRows", spells), coefficients,
+        "Experimental: not all values are correct yet." },
     { "Rates", "spellRates", "Under the spell power breakdown (on retail, the description), the average a cast "
         .. "deals or heals per second and per mana. Per second, what lands at once counts over the cast time "
         .. "(instants as the global cooldown: 1.5 sec, or on retail after haste) and what comes over time over "
@@ -1271,7 +1289,7 @@ toggles({
     { "Gathering", "gatheringLoot", "What a herb or ore node holds: its yield over all the times it can be "
         .. "gathered, then the stone, gems, and other herbs it may give and the chance each time. On a dead "
         .. "creature that can be skinned, the Skinning it needs and the leather, hides, and scales it may give. "
-        .. "From Classic's loot tables.", classicOnly(forTypes("object", "unit")) },
+        .. "From Classic's loot tables.", withData("nodeLoot", forTypes("object", "unit")) },
     { "IDs", "showIDs", "The item's, spell's, or NPC's ID at the bottom of its panel, under other addons' rows.",
         forTypes("item", "spell", "unit") },
 })
@@ -1279,13 +1297,14 @@ toggles({
 row("Stat colors", colorSwatches(ns.Stats.CATEGORIES, "statColor", function(key)
     return hexColor((ns.Stats.categoryColors(key)))
 end), colorGroupSetting(ns.Stats.CATEGORIES, "statColor"), items, true)
--- Retail's secondary stats, each in its own color.
-if ns.IsRetail() then
-    local categories = ns.Retail.Stats.CATEGORIES
-    row("Secondary stat colors", colorSwatches(categories, "statColor", function(key)
+-- A client's own stat colors, as retail's secondary stats, each group on a row of its own.
+for _, group in ipairs(ns.Stats.CATEGORY_GROUPS) do
+    row(group.label, colorSwatches(group.categories, "statColor", function(key)
         return hexColor((ns.Stats.categoryColors(key)))
-    end), colorGroupSetting(categories, "statColor"), items, true)
+    end), colorGroupSetting(group.categories, "statColor"), items, true)
 end
+row("Armor colors", colorSwatches(ns.Palette.ARMOR, "armorColor", ns.Palette.armorColor),
+    colorGroupSetting(ns.Palette.ARMOR, "armorColor"), items, true)
 row("Class colors", colorSwatches(ns.Palette.CLASSES, "classColor", ns.Palette.classColor, function()
     if ns.Palette.addonClassColors() then
         return L["Your class colors addon sets these; the colors chosen here apply without it."]
@@ -1324,12 +1343,12 @@ end
 editor:SetHeight(EDITOR_HEIGHT)
 host:SetHeight(EDITOR_HEIGHT - PREVIEW_TOP - 16)
 
-local resetAll = editorButton(editor, "Reset all fonts and colors", 170, function()
+local resetAll = editorButton(editor, L["Reset all fonts and colors"], 170, function()
     ns.resetStyles()
     refresh()
 end)
 resetAll:SetPoint("BOTTOMLEFT", editor, "BOTTOMLEFT", CONTROLS_X, 16)
-local moreOptions = editorButton(editor, "More options", 100, function()
+local moreOptions = editorButton(editor, L["More options"], 100, function()
     if ns.openSettings() then editor:Hide() end
 end)
 moreOptions:SetPoint("BOTTOMRIGHT", editor, "BOTTOMRIGHT", -18, 16)
@@ -1369,7 +1388,13 @@ editor:SetScript("OnEvent", function(_, event, id, success)
     if not editor:IsShown() then return end
     if ns.util.isSecret(id) or ns.util.isSecret(success) then return end
     if event == "GET_ITEM_INFO_RECEIVED" then
-        if state.tooltipType == "item" and id == state.lookup then refresh() end
+        -- Sample models also contain asynchronous item names (recipes,
+        -- materials, gear, and mail attachments). Refresh the visible
+        -- example when its item cache becomes available, not only ID lookup.
+        if success and (state.tooltipType == "item" or state.tooltipType == "mail"
+            or state.tooltipType == "quest") then
+            refresh()
+        end
     elseif event == "QUEST_DATA_LOAD_RESULT" and success and state.tooltipType == "quest" then
         local sample = samples()[state.sample]
         if sample and sample.questID == id then refresh() end
