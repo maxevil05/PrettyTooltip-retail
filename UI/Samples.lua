@@ -25,9 +25,20 @@ end
 
 -- An item's, spell's, or quest's name on this client, asked on each draw.
 -- Quest fallbacks are translated while the client loads their titles.
-local function itemName(id, english) return { itemName = id, english } end
-local function spellName(id, english) return { spellName = id, english } end
-local function questName(id, english) return { questName = id, english } end
+-- Preserve 1.3.6's localized-first preview names: these sample item IDs
+-- may be missing from the item cache immediately after login or /reload.
+local function previewName(id, english, kind)
+    if GetLocale and GetLocale() == "zhCN" then
+        local translated = L[english]
+        if type(translated) == "string" and translated ~= english then
+            return translated
+        end
+    end
+    return { [kind] = id, english }
+end
+local function itemName(id, english) return previewName(id, english, "itemName") end
+local function spellName(id, english) return previewName(id, english, "spellName") end
+local function questName(id, english) return previewName(id, english, "questName") end
 
 local function quoted(text) return '"' .. text .. '"' end
 
@@ -37,11 +48,11 @@ local TYPES = {
     { key = "mail", label = "Mail", dataType = "mail", model = "mailModel", first = "mailTitle", noun = "mail",
         noLookup = true, samples = { { label = "Attachments", fields = {
             attachments = {
-                { link = "|cffffffffCooked Crab Claw|r", count = 9, icon = { item = 2682 },
-                    prices = { { left = "Vendor", right = { money = 25 } }, { left = "Auction", right = { money = 97 } } } },
-                { link = "|cff1eff00Pyrite|r", count = 5, icon = { item = 249391 },
-                    prices = { { left = "Vendor", right = { money = 100 } }, { left = "Auction", right = { money = 109 } } } },
-            }, totals = { { left = "Total: 14 items", right = { money = 1418 } } },
+                { link = "|cffffffff" .. L["Cooked Crab Claw"] .. "|r", count = 9, icon = { item = 2682 },
+                    prices = { { left = L["Vendor"], right = { money = 25 } }, { left = L["Auction"], right = { money = 97 } } } },
+                { link = "|cff1eff00" .. L["Pyrite"] .. "|r", count = 5, icon = { item = 52183 },
+                    prices = { { left = L["Vendor"], right = { money = 100 } }, { left = L["Auction"], right = { money = 109 } } } },
+            }, totals = { { left = L["Total: 14 items"], right = { money = 1418 } } },
         } } } },
     {
         key = "item", label = "Items", dataType = "Item", model = "itemModel", first = "title", noun = "item",
@@ -76,7 +87,7 @@ local TYPES = {
                 fields = {
                     name = itemName(22425, "Redemption Tunic"), quality = 4, icon = { item = 22416 }, level = 88,
                     equippable = true,
-                    slot = L["Plate"] .. DOT .. INVTYPE_CHEST,
+                    slot = L["Plate"] .. DOT .. INVTYPE_CHEST, armorClass = "Plate",
                     header = { { left = ITEM_BIND_ON_PICKUP, right = fill(ITEM_MIN_LEVEL, 60), rightColor = PALE } },
                     armor = { { left = fill(ARMOR_TEMPLATE, 1027), right = "", value = "1027" } },
                     primary = { statLine("INTELLECT", 31), statLine("STAMINA", 25) },
@@ -145,7 +156,7 @@ local TYPES = {
                         rightColor = PALE } },
                     created = {
                         name = itemName(250508, "Veteran's Gloves"), quality = 2, icon = "Interface\\Icons\\INV_Gauntlets_05",
-                        slot = L["Mail"] .. DOT .. INVTYPE_HAND,
+                        slot = L["Mail armor"] .. DOT .. INVTYPE_HAND, armorClass = "Mail",
                         levelRequirement = { text = fill(ITEM_MIN_LEVEL, 15), met = true },
                         armor = { { left = fill(ARMOR_TEMPLATE, 115), right = "", value = "115" } },
                         primary = { statLine("STRENGTH", 5), statLine("AGILITY", 3), statLine("STAMINA", 5) },
@@ -393,17 +404,34 @@ local TYPES = {
         },
     },
 }
--- Retail's own parts in the samples (Retail/UI/Samples.lua).
-if ns.IsRetail() then
-    ns.Retail.Samples.extend(TYPES, { statLine = statLine, itemName = itemName, spellName = spellName })
+-- A client's own parts in the samples (retail's Retail/UI/Samples.lua), each a
+-- function given the samples and the helpers that make them.
+for _, extend in ipairs(ns.contributions("samples")) do
+    extend(TYPES, { statLine = statLine, itemName = itemName, spellName = spellName })
 end
 
 -- Markers ----------------------------------------------------------------------
 
-local function icon(getter, id)
+-- Fixed editor samples may refer to retired spell IDs on retail.
+-- Resolve these sample icons before asking the spell API, which may return
+-- the generic question-mark texture even when the call succeeds.
+local SAMPLE_SPELL_ICONS = {
+    [133] = "Interface\\Icons\\Spell_Fire_FlameBolt",
+    [72] = "Interface\\Icons\\Ability_Warrior_ShieldBash",
+    [635] = "Interface\\Icons\\Spell_Holy_HolyBolt",
+    [1245] = "Interface\\Icons\\Spell_Holy_WordFortitude",
+    [21562] = "Interface\\Icons\\Spell_Holy_WordFortitude",
+    [980] = "Interface\\Icons\\Spell_Shadow_CurseOfSargeras",
+    [2818] = "Interface\\Icons\\Ability_Rogue_DualWeild",
+    [108853] = "Interface\\Icons\\Spell_Fire_Fireball02",
+    [19750] = "Interface\\Icons\\Spell_Holy_FlashHeal",
+}
+
+local function icon(getter, id, isSpell)
+    if isSpell and SAMPLE_SPELL_ICONS[id] then return SAMPLE_SPELL_ICONS[id] end
     if getter then
         local ok, found = pcall(getter, id)
-        if ok and found then return found end
+        if ok and found and found ~= 0 then return found end
     end
     return QUESTION_MARK
 end
@@ -421,10 +449,20 @@ local function resolve(value)
         return icon(C_Item and C_Item.GetItemIconByID, value.item)
     end
     if value.spell and next(value, next(value)) == nil then
-        return icon(C_Spell and C_Spell.GetSpellTexture or GetSpellTexture, value.spell)
+        return icon(C_Spell and C_Spell.GetSpellTexture or GetSpellTexture, value.spell, true)
     end
-    if value.itemName then return ns.Game.itemName(value.itemName) or value[1] end
-    if value.spellName then return ns.Game.spellName(value.spellName) or value[1] end
+    if value.itemName then
+        -- Fixed editor examples must not fall back to English while item data
+        -- is still loading (or when an old sample ID is unavailable).
+        -- Prefer an explicit translation; otherwise use the client's item name.
+        local translated = L[value[1]]
+        if GetLocale and GetLocale() == "zhCN" and type(translated) == "string"
+            and translated ~= value[1] then
+            return translated
+        end
+        return ns.Game.itemName(value.itemName) or translated or value[1]
+    end
+    if value.spellName then return ns.Game.spellName(value.spellName) or L[value[1]] end
     if value.questName then return ns.Game.questName(value.questName) or L[value[1]] end
     if value.money then return money(value) end
     local copy = {}
