@@ -31,3 +31,18 @@ L["Myth"] = "神话"
 L["Recharge"] = "充能时间"
 L["Under the strip, on a spell with charges: Max 2 Charges."] = "在信息栏下方，用于有充能的法术：最多可使用2次。"
 L["Blasts the enemy for 950 Fire damage."] = "对敌人造成950点火焰伤害。"
+-- Retail's classes, as the game names them, for the style editor's class colors.
+L["Death Knight"] = "死亡骑士"
+L["Monk"] = "武僧"
+L["Demon Hunter"] = "恶魔猎手"
+L["Evoker"] = "唤魔师"
+
+-- Retail Mythic+ rating integration.
+L['Mythic+ Rating Modifier'] = '大秘境评分修饰键'
+L['Hold Ctrl to show Mythic+ rating and dungeon scores on player tooltips.'] = '按住 Ctrl 显示大秘境评分和副本成绩。'
+L['Hold Alt to show Mythic+ rating and dungeon scores on player tooltips.'] = '按住 Alt 显示大秘境评分和副本成绩。'
+L['Show Mythic+ rating and dungeon scores without holding a modifier key.'] = '无需按键，始终显示大秘境评分和副本成绩。'
+L['Mythic+ Rating'] = '大秘境评分'
+
+-- Player tooltip item level (retail).
+L["Item Level"] = "物品等级"
