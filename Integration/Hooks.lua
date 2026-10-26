@@ -26,7 +26,7 @@ end
 local function fingerprint(tooltip, data)
     if isSecret(data) or type(data) ~= "table" or isSecret(data.lines) then return end
     local parts = { ns.settingsVersion or 0, isComparison(tooltip) and 1 or 0,
-        ns.detailsKeyDown() and 1 or 0 }
+        ns.detailsKeyDown() and 1 or 0, ns.mythicScoreKeyDown() and 1 or 0, ns.raidProgressKeyDown() and 1 or 0 }
     local name = tooltip:GetName()
     for index = 1, tooltip:NumLines() do
         local left = tooltip:GetLeftLine(index)
@@ -72,17 +72,49 @@ local function claimantOf(dataType, tooltip, data)
     return dataType
 end
 
+-- Only the player's equipped slots suppress Shift comparisons.
+local function isOwnEquippedSlot(tooltip)
+    local owner = tooltip and tooltip.GetOwner and tooltip:GetOwner()
+    local depth = 0
+    while owner and depth < 16 do
+        local name = owner.GetName and owner:GetName()
+        if type(name) == "string" then
+            if name:match("^Character[%w_]+Slot$") or name:match("^PaperDoll[%w_]+Slot$") then return true end
+            if name:match("^Inspect") or name:match("^ContainerFrame") or name:match("^Bag") then return false end
+        end
+        owner = owner.GetParent and owner:GetParent()
+        depth = depth + 1
+    end
+    return false
+end
+local function hideShiftComparison(tooltip, panel)
+    if not (isComparison(tooltip) and not ns.originalKeyDown()) then return false end
+    local main = _G.GameTooltip
+    if not (main and main.IsShown and main:IsShown() and isOwnEquippedSlot(main)) then return false end
+    if util.canModify(tooltip) then
+        local alpha = util.number((util.call(tooltip.GetAlpha, tooltip)))
+        if alpha and alpha ~= 0 then tooltip:SetAlpha(0) end
+    end
+    panel:Hide()
+    return true
+end
+
 local function update(tooltip, data, model)
     if not util.canModify(tooltip) or native.isParked(tooltip) then return end
     local panel = getPanel(tooltip)
     local tooltipType = TooltipTypes[panel.dataType]
     if showsOriginal(panel) or not tooltipType then restoreNative(tooltip); return end
     panel.nativeOnly = nil
+    if hideShiftComparison(tooltip, panel) then return end
     local ok = true
     if not model then ok, model = pcall(tooltipType.read, tooltip, data, ns.Game) end
     if not ok or not model then restoreNative(tooltip); return end
     if not panel.nativeAlpha then panel.nativeAlpha = util.number((util.call(tooltip.GetAlpha, tooltip))) end
     if not panel.nativeAlpha then restoreNative(tooltip); return end
+    -- Content extension callbacks belong inside descriptor.read/render, under
+    -- their existing failure handling. Native alpha, fitting, input, and
+    -- comparison lifecycle remain owned by this integration and ns.Native.
+    native.followParent(tooltip, panel)
     local rendered = pcall(tooltipType.render, panel, tooltip, model)
     if not rendered then restoreNative(tooltip); return end
     tally("placement from render")
@@ -93,7 +125,7 @@ local function update(tooltip, data, model)
     panel.key = key
     if panel.dataType == Enum.TooltipDataType.Item then
         panel.model, panel.modelDataType = model, panel.dataType
-        panel.modelVersion, panel.modelDetails = ns.settingsVersion or 0, ns.detailsKeyDown()
+        panel.modelVersion, panel.modelDetailsShown = ns.settingsVersion or 0, ns.detailsKeyDown()
     else
         panel.model = nil
     end
@@ -291,6 +323,10 @@ local function onTooltipData(dataType, tooltip, data)
         placement.hookInput(tooltip)
         tooltip:HookScript("OnHide", function(hidden)
             if panel.nativeOnly then return end
+            if native.hiddenByParent(hidden) then
+                native.followParent(hidden, panel)
+                return
+            end
             -- Keep native cleanup deferred, but never draw the old panel at
             -- an anchor reset by an action button's hide/clear sequence.
             panel:Hide()
@@ -303,6 +339,7 @@ local function onTooltipData(dataType, tooltip, data)
         local function onNativeShown(shown)
             if panel.nativeOnly then return end
             if not util.canModify(shown) then return end
+            native.followParent(shown, panel)
             tally(isComparison(shown) and "show hook (comparison)" or "show hook")
             if panel.restorePending or panel.comparisonPending or panel.contentPending then
                 if panel.nativeAlpha then shown:SetAlpha(0) end
@@ -362,7 +399,11 @@ local function onTooltipData(dataType, tooltip, data)
             native.unpark(owned)
             placement.ownerChanged(owned)
         end)
-        tooltip:HookScript("OnHide", native.unpark)
+        -- A faded tooltip stays off the screen while hidden by its parent;
+        -- EllesmereUI's modifier would otherwise reveal it at its old anchor.
+        tooltip:HookScript("OnHide", function(hidden)
+            if not native.hiddenByParent(hidden) then native.unpark(hidden) end
+        end)
         panel.hooked = true
         panel:SetScript("OnUpdate", probe("panel update", function(self, elapsed)
             if not util.canModify(tooltip) then self:Hide(); return end
@@ -474,7 +515,7 @@ function hooks.install()
     -- The original-tooltip key swaps the panel for the game's tooltip; Shift
     -- shows or hides the details.
     ns.Processor.onKey("panel", function(key)
-        if not (ns.isOriginalKey(key) or ns.isDetailsKey(key)) then return end
+        if not (ns.isOriginalKey(key) or ns.isDetailsKey(key) or ns.isMythicScoreKey(key)) then return end
         for tooltip, panel in pairs(panels) do
             if util.canModify(tooltip) and tooltip:IsShown() and showsDataType(tooltip, panel) then
                 if showsOriginal(panel) then
@@ -487,7 +528,7 @@ function hooks.install()
                     if ns.isOriginalKey(key) and panel.dataType == Enum.TooltipDataType.Item
                         and panel.model and panel.modelDataType == panel.dataType
                         and panel.modelVersion == (ns.settingsVersion or 0)
-                        and panel.modelDetails == ns.detailsKeyDown() then
+                        and panel.modelDetailsShown == ns.detailsKeyDown() then
                         local currentKey, valid = keyOf(TooltipTypes[panel.dataType], tooltip, panel.data)
                         if valid and currentKey and currentKey == panel.key
                             and util.call(fingerprint, tooltip, panel.data) then
