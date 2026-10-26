@@ -6,6 +6,10 @@ if not (ui and UNIT and ui.renderView) then
     return
 end
 
+-- A client file loaded after this one can set descriptor.extension: afterRead.
+-- Retail's is Retail/Tooltips/UnitExtension.lua.
+local descriptor = {}
+
 local util = ns.util
 local tooltipData = ns.TooltipData
 local colors = ns.Palette.roles
@@ -192,7 +196,8 @@ local function readGuildRealm(model)
     end
 end
 
-local function completeModel(model, unit, game)
+-- tooltip and data: the game's, when read from them rather than the editor's sample.
+local function completeModel(model, unit, game, tooltip, data)
     if unit then
         model.isPlayer = game.unitIsPlayer(unit)
         model.level = game.unitLevel(unit)
@@ -217,10 +222,7 @@ local function completeModel(model, unit, game)
             model.targetColor = unitColor(target, game)
         end
     end
-    if model.isPlayer then
-        if ns.IsRetail() then ns.Retail.Unit.readSpec(model, game) end
-        readGuildRealm(model)
-    end
+    if model.isPlayer then readGuildRealm(model) end
     -- An NPC's title, as "Herbalism Supplier", is the untyped line between its
     -- name and its level; Forever leaves out the brackets around it.
     if not model.isPlayer and not model.tag and model.levelIndex then
@@ -266,6 +268,12 @@ local function completeModel(model, unit, game)
         model.color = TAPPED
     else
         model.color = model.reaction and REACTION[model.reaction]
+    end
+    -- A client file loaded after this one can read more into the finished
+    -- model (descriptor.extension.afterRead), as retail's player spec.
+    local extension = descriptor.extension
+    if extension and extension.afterRead then
+        extension.afterRead(model, { nativeTooltip = tooltip, data = data, game = game, rootModel = model })
     end
     return model
 end
@@ -325,10 +333,8 @@ local function readUnit(tooltip, data, game)
     if not model.name or model.name == "" then return end
     local appended = tooltipData.appendedRows(tooltip, model.lineIndices)
     if not appended then return end
-    for _, row in ipairs(appended) do
-        if trim(row.left) ~= "" or row.right ~= "" then model.extras[#model.extras + 1] = row end
-    end
-    return completeModel(model, unit, game)
+    tooltipData.addExtras(model.extras, appended)
+    return completeModel(model, unit, game, tooltip, data)
 end
 
 -- The level on a plate under the portrait, as the game's target frame shows
@@ -343,7 +349,34 @@ end
 local function infoText(model, plated)
     -- The spec and class as the client wrote them, else the spec before the class.
     local class = model.specClass or trim(table.concat({ model.spec or "", model.className or "" }, " "))
-    local what = model.isPlayer and table.concat({ model.race or "", class }, " ") or (model.creature or "")
+    local function colored(value, color)
+        if not value or value == "" then return "" end
+        return "|cff" .. hex(color) .. value .. "|r"
+    end
+    -- Keep the retail client's specialization wording, while restoring v26's
+    -- faction-colored race, class-colored class and light-blue specialization.
+    local what
+    if model.isPlayer then
+        local factionColor = model.faction == "Alliance" and { .42, .66, 1 }
+            or model.faction == "Horde" and { 1, .37, .33 } or NO_TINT
+        local spec = model.spec or ""
+        local className = model.className or ""
+        local coloredSpec = spec ~= "" and colored(spec, { .60, .80, 1 }) or ""
+        local coloredClass = colored(className, model.color or NO_TINT)
+        -- Preserve the order of spec/class used by Retail's model.specClass.
+        local specClass = model.specClass or ""
+        local classText = coloredClass
+        if spec ~= "" then
+            if specClass ~= "" and specClass:sub(1, #className) == className then
+                classText = coloredClass .. " " .. coloredSpec
+            else
+                classText = coloredSpec .. " " .. coloredClass
+            end
+        end
+        what = trim(colored(model.race or "", factionColor) .. " " .. classText)
+    else
+        what = model.creature or ""
+    end
     local info
     if plated then
         info = trim(what)
@@ -509,6 +542,12 @@ local function unitView(panel, model, healthBar)
             return y + HEALTH_HEIGHT
         end }
     end
+    -- Retail mount details belong below the borrowed native health bar.
+    -- Keep the other extras (item level and Mythic+ rating) in their original position.
+    if model.mountRows and #model.mountRows > 0 then
+        sections[#sections + 1] = { separator = { space = 4 }, kind = "rows",
+            rows = model.mountRows, style = styles.extras, color = ui.EXTRA_COLOR, gap = 2, wrap = true }
+    end
     return {
         tooltipType = "unit",
         color = color,
@@ -587,7 +626,10 @@ local function lendHealthBar(panel, bar)
             hookedHealthBars[bar] = true
         end
         if not panel.returnsHealthBar then
-            panel:HookScript("OnHide", returnHealthBar)
+            -- Kept while the panel's host hides it; the panel comes back with it.
+            panel:HookScript("OnHide", function(hidden)
+                if not hidden:IsShown() then returnHealthBar(hidden) end
+            end)
             panel.returnsHealthBar = true
         end
     end
@@ -666,5 +708,6 @@ local function details(model, context)
     return rows
 end
 
-ui.defineTooltipType(UNIT, { read = readUnit, render = renderUnit, key = unitKey, option = "unitPanels", alwaysRedraw = true,
-    details = details, detailKeys = { "gatheringLoot", "showIDs" } })
+descriptor.read, descriptor.render, descriptor.key, descriptor.option = readUnit, renderUnit, unitKey, "unitPanels"
+descriptor.alwaysRedraw, descriptor.details, descriptor.detailKeys = true, details, { "gatheringLoot", "showIDs" }
+ui.defineTooltipType(UNIT, descriptor)
