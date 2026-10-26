@@ -347,7 +347,10 @@ end
 local function getPanel(tooltip)
     local panel = panels[tooltip]
     if panel then return panel end
-    panel = createPanel(UIParent)
+    -- Shown and hidden with the tooltip's parent (Integration/Native.lua).
+    local host = CreateFrame("Frame", nil, UIParent)
+    panel = createPanel(host)
+    panel.host = host
     panels[tooltip] = panel
     return panel
 end
@@ -593,6 +596,7 @@ local function measureStyled(panel, text, style)
 end
 
 local function rowWidth(panel, row, style)
+    if row.blank then return 0 end
     style = asStyle(style)
     local width = measureStyled(panel, row.left, style)
     if row.right and row.right ~= "" then
@@ -615,7 +619,10 @@ local function drawRow(panel, row, y, style, color, indent, gap, rightIndent)
     indent, gap, rightIndent = indent or 0, gap or 3, rightIndent or 0
     -- What the row leaves under its letters, its line's leading and the gap:
     -- a divider or rule after it counts this in (Panel/Render.lua).
-    panel.rowTail = math.floor(style.size * 1.15 + .5) - style.size + gap
+    local lineHeight = math.floor(style.size * 1.15 + .5)
+    panel.rowTail = lineHeight - style.size + gap
+    -- A blank row, as another addon's between its sections: one empty line.
+    if row.blank then return y + lineHeight + gap end
     local w = panel.width - 2 * pad() - indent - rightIndent
     if right and right ~= "" then
         local rightWidth = math.min(measureStyled(panel, right, style) + 2,
@@ -640,6 +647,7 @@ local function acquireTexture(panel, path, sublevel)
     tex:SetTexture(path or WHITE)
     tex:SetTexCoord(0, 1, 0, 1)
     tex:SetVertexColor(1, 1, 1, 1)
+    tex:SetDesaturated(false)
     tex:ClearAllPoints()
     tex:Show()
     return tex
@@ -944,6 +952,9 @@ end
 -- details(model, context), the detail rows the game's own tooltip gets in its
 -- place (context passed on to ns.showsDetail), with detailKeys, the settings
 -- that turn them on.
+-- Provisional item-only extension callbacks: see Tooltips/Item.lua's descriptor.
+-- An extension field is optional; it is not automatically dispatched by this
+-- registry. Each reader/view builder must explicitly implement its boundaries.
 local TooltipTypes = {}
 
 -- Records a tooltip type, its reader and renderer profiled; the entry file
