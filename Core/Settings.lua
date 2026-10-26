@@ -33,6 +33,8 @@ local DEFAULTS = {
     cursorObjects = true,
     cursorDisableInCombat = true,
     statColors = true,
+    -- Cloth, leather, mail, and plate in their own colors in the item's subtitle.
+    armorColors = false,
     qualityTint = true,
     statMarkers = true,
     -- A weapon's damage on the large line, its DPS and speed under it.
@@ -68,6 +70,8 @@ local DEFAULTS = {
     editorStyle = "native",
     -- "ALT", "CTRL", or "NONE". Shift is the game's comparison key.
     originalKey = "ALT",
+    mythicScoreKey = "NONE",
+    raidProgressKey = "NONE",
     bodyFont = nil,
     titleFont = nil,
     -- "NONE", "OUTLINE", or "THICKOUTLINE", for elements without their own.
@@ -175,7 +179,7 @@ ns.ELEMENTS = {
         note = "On recipes; the count you carry red while short, unless set." },
     { key = "caption", label = "Section captions", size = 9, color = colors.caption, caps = true,
         note = "Creates and Reagents on recipes." },
-    { key = "disenchant", label = "Disenchant results", size = 11, color = colors.detail, classic = true,
+    { key = "disenchant", label = "Disenchant results", size = 11, color = colors.detail, needs = "disenchantFor",
         note = "The Enchanting needed red while yours is too low, grey without Enchanting, unless set." },
     { key = "spellTitle", label = "Spell name", size = 17, title = true,
         color = colors.title, tooltipType = "spell" },
@@ -200,7 +204,7 @@ ns.ELEMENTS = {
         note = "The skill in its skill-up color, unmet requirements red, unless set." },
     { key = "objectQuests", label = "Quest lines", size = 12, color = colors.objective,
         tooltipType = "object", note = "Quest names gold, finished objectives green, unless set." },
-    { key = "objectLoot", label = "Contents", size = 11, color = colors.detail, tooltipType = "object", classic = true,
+    { key = "objectLoot", label = "Contents", size = 11, color = colors.detail, tooltipType = "object", needs = "nodeLoot",
         note = "A herb or ore node's yield over its taps, then what else it may hold and the chance each tap. "
             .. "Turned off by Gathering contents in the options." },
     { key = "objectPrices", label = "Prices", size = 11, color = { .88, .78, .60 },
@@ -214,7 +218,7 @@ ns.ELEMENTS = {
         tooltipType = "unit", note = "The level in its difficulty color, unless set." },
     { key = "unitBadges", label = "Badges", size = 12, color = { .9, .9, .9 }, tooltipType = "unit",
         note = "Elite, rare, faction, PvP, AFK, and dead." },
-    { key = "unitSkinning", label = "Skinning", size = 11, color = colors.detail, tooltipType = "unit", classic = true,
+    { key = "unitSkinning", label = "Skinning", size = 11, color = colors.detail, tooltipType = "unit", needs = "skinningLoot",
         note = "On a dead creature that can be skinned: the Skinning it needs, in its skill-up color, and what "
             .. "it may give. Turned off by Gathering contents in the options." },
     { key = "unitDetails", label = "Target and owner", size = 11, color = colors.detail,
@@ -271,16 +275,22 @@ ns.TOOLTIP_TYPES = {
     { label = "Flyout buttons", cursor = "cursorFlyouts", types = { "Flyout" } },
 }
 
--- Retail's own parts and defaults (Retail/Core/Settings.lua), each part after the one it names.
-if ns.IsRetail() then
-    for key, value in pairs(ns.Retail.Settings.DEFAULTS) do DEFAULTS[key] = value end
-    for _, element in ipairs(ns.Retail.Settings.ELEMENTS) do
+-- A client's own defaults and parts (retail's Retail/Core/Settings.lua), each
+-- part after the one it names, so the style editor lists it where it is drawn.
+-- A part naming none stops the load: left out, its style would be missing
+-- when its tooltip is drawn.
+for _, extra in ipairs(ns.contributions("settings")) do
+    for key, value in pairs(extra.defaults or {}) do DEFAULTS[key] = value end
+    for _, element in ipairs(extra.elements or {}) do
+        local at
         for index, other in ipairs(ns.ELEMENTS) do
             if other.key == element.after then
-                table.insert(ns.ELEMENTS, index + 1, element)
+                at = index
                 break
             end
         end
+        assert(at, "no style part " .. tostring(element.after) .. " to put " .. tostring(element.key) .. " after")
+        table.insert(ns.ELEMENTS, at + 1, element)
     end
 end
 
@@ -405,7 +415,7 @@ function ns.resetStyles()
     PrettyTooltipDB.headerTopAlpha, PrettyTooltipDB.headerBottomAlpha = nil, nil
     for key in pairs(PrettyTooltipDB) do
         if type(key) == "string" and (key:match("^statColor%u") or key:match("^schoolColor%u")
-            or key:match("^classColor%u")) then
+            or key:match("^classColor%u") or key:match("^armorColor%u")) then
             PrettyTooltipDB[key] = nil
         end
     end
@@ -458,6 +468,16 @@ end
 
 function ns.originalKeyDown() return keyDown(ns.option("originalKey")) end
 function ns.isOriginalKey(key) return isKey(ns.option("originalKey"), key) end
+function ns.mythicScoreKeyDown()
+    local name = ns.option("mythicScoreKey")
+    return not MODIFIERS[name] or keyDown(name)
+end
+function ns.isMythicScoreKey(key) return isKey(ns.option("mythicScoreKey"), key) end
+function ns.raidProgressKeyDown()
+    local name = ns.option("raidProgressKey")
+    return not MODIFIERS[name] or keyDown(name)
+end
+function ns.isRaidProgressKey(key) return isKey(ns.option("raidProgressKey"), key) end
 
 -- Whether the details show now: their key is held, or they always show.
 function ns.detailsKeyDown()
