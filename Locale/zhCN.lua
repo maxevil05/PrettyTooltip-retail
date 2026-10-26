@@ -270,6 +270,9 @@ L["The small diamond before each stat; enchants use a green one."] = "每项属�
 L["Stat colors"] = "属性颜色"
 L["Each kind of stat in its color below, and the school colors. Off, every stat is parchment."] =
     "使用下方的属性分类颜色和法术学派颜色。关闭后所有属性均使用羊皮纸色。"
+L["Armor colors"] = "护甲颜色"
+L["Cloth, leather, mail, and plate under the item's name, each in its color below. A type you cannot wear stays red. Off, they take the quality color."] =
+    "物品名称下方的布甲、皮甲、锁甲和板甲各使用下方的颜色。无法穿戴的类型仍显示为红色。关闭后使用品质颜色。"
 L["Abbreviated Equip Effects"] = "简化装备效果"
 L["Where the game's own item tooltip shows, in the Blizzard layout or with items not restyled, its Equip effects are shortened, as +1% Critical Strike Chance, and the game's colors kept, but for spell power and chance on hit effects in their stat colors. Hold the default tooltip modifier for the full wording."] =
     "在显示游戏物品提示时（暴雪布局或未重绘的物品），将装备效果缩短为+1%爆击几率等简短文字。保留游戏颜色，法术强度和击中时触发的效果则使用属性颜色。按住原版提示修饰键可查看完整文字。"
@@ -281,9 +284,10 @@ L["The vendor price in the footer; for a stack, the price of one and of the whol
 L["Swap Damage Stats"] = "交换伤害显示"
 L["A weapon's damage on the large line, with its speed and damage per second on the small one under it."] =
     "武器伤害显示在大字行，速度和每秒伤害显示在其下方的小字行。"
-L["Spell power"] = "法术强度"
+L["Spell power (Experimental)"] = "法术强度（实验性）"
 L["Under the description, each amount's spell power coefficient and its split into base and spell power. No game API has coefficients: they come from Forever's client data, and ones marked ~ are estimates."] =
     "在说明下方显示各项数值的法术强度系数，以及基础值和法术强度加成。游戏API不提供系数，数据来自Forever客户端，带~的数值为估算值。"
+L["Experimental: not all values are correct yet."] = "实验性功能：部分数值尚不准确。"
 L["Rates"] = "效率"
 L["Under the spell power breakdown, the average a cast deals or heals per second and per mana. Per second, what lands at once counts over the cast time (instants as the 1.5 sec global cooldown) and what comes over time over its duration. Crits and talents do not count."] =
     "在法术强度分析下方显示每次施法的平均每秒及每点法力伤害或治疗量。直接效果按施法时间计算，瞬发法术按1.5秒公共冷却计算，持续效果按持续时间计算。不计入爆击和天赋。"
@@ -499,7 +503,9 @@ L["Select all"] = "全选"
 L["Axe"] = "斧"
 L["Plate"] = "板甲"
 L["Polearm"] = "长柄武器"
-L["Mail"] = "锁甲"
+L["Mail"] = "邮件"
+L["Cloth"] = "布甲"
+L["Leather"] = "皮甲"
 L["Consumable"] = "消耗品"
 L["Plans"] = "设计图"
 L["Shields"] = "盾牌"
@@ -552,3 +558,79 @@ L["Ended by"] = "完成NPC"
 L["Started by"] = "起始NPC"
 L["Found in"] = "所在位置"
 L["Rares"] = "稀有"
+
+-- Retail editor and tooltip localization additions.
+L["Mail armor"] = "锁甲"
+L["Spell power"] = "法术强度"
+L["Sell Price"] = "出售价格"
+L["Your class colors addon sets these; the colors chosen here apply without it."] = "当前职业颜色由其他职业颜色插件控制；未启用该插件时，使用此处设置的颜色。"
+L["Kel'Thuzad"] = "克尔苏加德"
+L["Ragnaros"] = "拉格纳罗斯"
+L["Azuregos"] = "艾索雷葛斯"
+L["Eagan Peltskinner"] = "伊根·派特斯金纳"
+L["Global scale"] = "全局缩放"
+L["Plans: Veteran's Gloves"] = "设计图：老兵手套"
+L["Veteran's Gloves"] = "老兵手套"
+L["Shield Bash"] = "盾击"
+L["Holy Light"] = "圣光术"
+L["Power Word: Fortitude"] = "真言术：韧"
+L["Arcanite Reaper"] = "奥金斧"
+L["Redemption Tunic"] = "救赎外套"
+L["Redemption Legguards"] = "救赎腿甲"
+L["Redemption Handguards"] = "救赎护手"
+L["Redemption Headpiece"] = "救赎头饰"
+L["Redemption Spaulders"] = "救赎肩铠"
+L["Blackhand Doomsaw"] = "黑手魔锯"
+L["Bronze Bar"] = "青铜锭"
+L["Rough Grinding Stone"] = "劣质砂轮"
+L["Small Lustrous Pearl"] = "有光泽的小珍珠"
+L["Major Healing Potion"] = "特效治疗药水"
+L["Gold Pickup Schedule"] = "拾取金币日程表"
+L["Curse of Agony"] = "痛苦诅咒"
+L["Deadly Poison"] = "致命毒药"
+L["Head of Deepfury"] = "卡姆·深怒的头颅"
+L["Head of Arugal"] = "阿鲁高的头颅"
+L["Tough Wolf Meat"] = "硬狼肉"
+L["Show Mythic+ rating without holding a modifier key."] = "无需按住修饰键，始终显示大秘境评分。"
+L["Mount"] = "坐骑"
+L["Collected"] = "已收集"
+L["Not collected"] = "未收集"
+L["Examples:"] = "示例："
+L["Attachments"] = "附件"
+L["Mail title"] = "邮件标题"
+L["Attachments and prices"] = "附件及价格"
+L["Mail contents"] = "邮件内容"
+L["Total: 14 items"] = "总计：14件物品"
+L["Cooked Crab Claw"] = "煮熟的蟹爪"
+L["Pyrite"] = "黄铁矿"
+L["%d items"] = "%d 件物品"
+
+-- Additional translations carried forward from the 1.3.6 retail branch.
+L["Mythic+ Rating Modifier"] = "大秘境评分修饰键"
+L["Hold Ctrl to show Mythic+ rating and dungeon scores on player tooltips."] = "按住 Ctrl 时显示玩家的大秘境总评分及各地下城评分。"
+L["Hold Alt to show Mythic+ rating and dungeon scores on player tooltips."] = "按住 Alt 时显示玩家的大秘境总评分及各地下城评分。"
+L["Mythic+ Rating"] = "大秘境评分"
+L["Source"] = "来源"
+
+-- Retail 1.3.7 editor entries and legacy sample fallbacks.
+L["Guild realm"] = "公会服务器"
+L["Socket hint"] = "插槽提示"
+L["Charges"] = "充能"
+
+-- Raid lockout progress
+L['Raid Progress'] = '团队副本'
+L['Raid Progress Modifier'] = '团队副本修饰键'
+L["Hold Ctrl to show the local character's current raid lockouts."] = '按住 Ctrl 显示当前角色本周团队副本进度。'
+L["Hold Alt to show the local character's current raid lockouts."] = '按住 Alt 显示当前角色本周团队副本进度。'
+L["Always show the local character's current raid lockouts."] = '始终显示当前角色本周团队副本进度。'
+
+-- Locale-specific Mythic+ and raid tooltip labels / short names.
+L["Mythic+ Rating"] = "大秘境评分"
+L["Raid Progress"] = "团队副本"
+L["Raid Short: Tidal Hollows"] = "潮缚石窟"
+L["Raid Short: Venomous Abyss"] = "烈毒之渊"
+L["Raid Short: Kishix Unbound"] = "基希克斯破封"
+
+L["General"] = "常规"
+
+L["Modifier Keys"] = "修饰键"
